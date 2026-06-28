@@ -1,5 +1,5 @@
 const API_URL='https://script.google.com/macros/s/AKfycbzp4j4jS8cggcANWgeJqWpZBsOU9FKnb7IzCwfxcEnsdD-f50WHCPYQnpz1nQ9lWSLJdA/exec';
-const TYPES=['visits','damages','supplies','news','phones'];
+const TYPES=['Επισκέψεις','Βλάβες','Προμήθειες','Ανακοινώσεις','Τηλέφωνα'];
 let data=loadLocal();let currentMonth=new Date();
 
 function loadLocal(){try{return JSON.parse(localStorage.getItem('skillountiaData')||'{}')}catch(e){return {}}}
