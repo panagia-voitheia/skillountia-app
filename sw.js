@@ -1,5 +1,5 @@
-const CACHE='skillountia-icon-v2';
-const ASSETS=['./','./index.html','./manifest.json','./welcome.png','./panagia.jpg','./avli.jpg','./progonoi.jpg'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
+self.addEventListener('install',e=>self.skipWaiting());
+self.addEventListener('activate',e=>self.clients.claim());
+self.addEventListener('fetch',event=>{
+  event.respondWith(fetch(event.request).catch(()=>caches.match(event.request)));
+});
