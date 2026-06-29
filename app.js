@@ -28,7 +28,7 @@ function addItem(type){
 function rowToItem(type,row){
   if(!row)return null;
   const title=row['Τίτλος']||row.title||row['Όνομα']||row['Όνομα / Υπηρεσία']||row['Ποιος θα πάει']||row['Ποιος θα πάει;']||'';
-  if(type==='visits')return {id:row.id||uid(),name:row['Ποιος θα πάει']||row['Όνομα']||row.name||title,from:row['Από']||row.from||'',to:row['Έως']||row.to||'',status:row['Κατάσταση']||row.status||'',notes:row['Παρατηρήσεις']||row.notes||'',created:row['Ημερομηνία καταχώρησης']||row.created||row.Created||''};
+  if(type==='visits')return {id:row.id||uid(),name:row['Ποιος θα πάει']||row['Όνομα']||row.name||title,from:dateOnly(row['Από']||row.from||''),to:dateOnly(row['Έως']||row.to||''),status:row['Κατάσταση']||row.status||'',notes:row['Παρατηρήσεις']||row.notes||'',created:row['Ημερομηνία καταχώρησης']||row.created||row.Created||''};
   return {id:row.id||uid(),title:title,text:row['Περιγραφή']||row['Πληροφορίες']||row['Μήνυμα']||row['Τηλέφωνο / σημείωση']||row.text||'',created:row['Ημερομηνία καταχώρησης']||row.created||row.Created||''}
 }
 function toSheetRow(type,item){
@@ -55,7 +55,41 @@ async function sync(type,item){
 function render(){renderLists();renderCalendar()}
 function itemHtml(x,type){if(type==='visits')return `<div class="item"><b>${esc(x.name)}</b><div>${esc(x.from)}${x.to?' έως '+esc(x.to):''}</div><div class="meta">${esc(x.status||'')}${x.notes?' – '+esc(x.notes):''}</div></div>`;return `<div class="item"><b>${esc(x.title)}</b><div>${esc(x.text||'')}</div><div class="meta">${esc(x.created||'')}</div></div>`}
 function renderLists(){TYPES.forEach(type=>{const ids={visits:['visitsList','visitList'],damages:['damagesList'],supplies:['suppliesList'],news:['newsList'],phones:['phonesList']}[type];ids.forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=((data[type]||[]).slice().reverse().map(x=>itemHtml(x,type)).join(''))||'<div class="small">Δεν υπάρχει ακόμη καταχώρηση.</div>'})})}
-function renderCalendar(){const title=document.getElementById('monthTitle'),grid=document.getElementById('calendarGrid');if(!title||!grid)return;const y=currentMonth.getFullYear(),m=currentMonth.getMonth();title.textContent=currentMonth.toLocaleDateString('el-GR',{month:'long',year:'numeric'});const first=new Date(y,m,1),days=new Date(y,m+1,0).getDate();let html=['Δ','Τ','Τ','Π','Π','Σ','Κ'].map(d=>`<div class="dow">${d}</div>`).join('');let offset=(first.getDay()+6)%7;for(let i=0;i<offset;i++)html+='<div></div>';for(let d=1;d<=days;d++){const date=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;let cls='';(data.visits||[]).forEach(v=>{if(v.from<=date&&(!v.to||v.to>=date))cls=(v.status==='check'||v.status==='Πέρασμα / έλεγχος χωρίς διανυκτέρευση')?'green':'red'});html+=`<div class="day ${cls}">${d}</div>`}grid.innerHTML=html}
+
+function dateOnly(x){
+  if(!x)return '';
+  if(String(x).includes('T'))return String(x).slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}/.test(String(x)))return String(x).slice(0,10);
+  const d=new Date(x);
+  if(!isNaN(d))return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return String(x).slice(0,10);
+}
+
+function renderCalendar(){
+  const title=document.getElementById('monthTitle'),grid=document.getElementById('calendarGrid');
+  if(!title||!grid)return;
+  const y=currentMonth.getFullYear(),m=currentMonth.getMonth();
+  title.textContent=currentMonth.toLocaleDateString('el-GR',{month:'long',year:'numeric'});
+  const first=new Date(y,m,1),days=new Date(y,m+1,0).getDate();
+  let html=['Δ','Τ','Τ','Π','Π','Σ','Κ'].map(d=>`<div class="dow">${d}</div>`).join('');
+  let offset=(first.getDay()+6)%7;
+  for(let i=0;i<offset;i++)html+='<div></div>';
+
+  for(let d=1;d<=days;d++){
+    const date=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls='';
+    (data.visits||[]).forEach(v=>{
+      const from=dateOnly(v.from);
+      const to=dateOnly(v.to)||from;
+      if(from && from<=date && to>=date){
+        cls=(v.status==='check'||v.status==='Πέρασμα / έλεγχος χωρίς διανυκτέρευση')?'green':'red';
+      }
+    });
+    html+=`<div class="day ${cls}">${d}</div>`;
+  }
+  grid.innerHTML=html;
+}
+
 function moveMonth(n){currentMonth=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+n,1);renderCalendar()}
 function updateBadges(){const map={visits:['navVisit','homeVisitBadge'],damages:['navDamage','homeDamageBadge'],supplies:['navSupplies','homeSuppliesBadge'],news:['navNews','homeNewsBadge']};Object.keys(map).forEach(type=>{const latest=Math.max(0,...(data[type]||[]).map(x=>Date.parse(x.created)||0));const seen=Number(localStorage.getItem('seen_'+type)||0);const has=latest>seen&&latest>0;const nav=document.getElementById(map[type][0]);const badge=document.getElementById(map[type][1]);if(nav)nav.classList.toggle('hasNew',has);if(badge)badge.style.display=has?'inline-block':'none'})}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
