@@ -1,6 +1,6 @@
 const API_URL='https://script.google.com/macros/s/AKfycbxwd0Y_ZOVS0vjDQh3g67_zYw5MCYV8DkPg-coNoxTVWehFGFVJG5ZHbSqMvAu_QNJ4ug/exec';
 const TYPES=['visits','damages','supplies','news','phones'];
-const SYNC_INTERVAL_MS=60000;
+const SYNC_INTERVAL_MS=20000;
 let data=loadLocal();let currentMonth=new Date();let isSyncing=false;
 
 function loadLocal(){try{return JSON.parse(localStorage.getItem('skillountiaData')||'{}')}catch(e){return {}}}
@@ -21,44 +21,40 @@ async function addVisit(){
   if(!item.name||!item.from){toast('Συμπληρώστε όνομα και ημερομηνία.');return}
   if(!item.to)item.to=item.from;
   if(hasConflict(item)){toast('Οι ημερομηνίες είναι ήδη δεσμευμένες.');return}
-  data.visits=data.visits||[];
-  data.visits.push(item);
-  clearIds('v_name','v_notes');
-  save();
-  await sync('visits',item);
-  toast('Αποθηκεύτηκε επίσκεψη.');
+  data.visits=data.visits||[];data.visits.push(item);clearIds('v_name','v_notes');save();
+  await sync('visits',item);toast('Αποθηκεύτηκε επίσκεψη.');setTimeout(()=>loadCloud(false),1500);
 }
 
 function addItem(type){
   const p={damages:'d',supplies:'s',news:'n',phones:'p'}[type];
   const item={id:uid(),title:val(p+'_title'),text:val(p+'_text'),created:todayText(),_pending:true};
   if(!item.title){toast('Συμπληρώστε τίτλο.');return}
-  data[type]=data[type]||[];
-  data[type].push(item);
-  clearIds(p+'_title',p+'_text');
-  save();
-  sync(type,item);
-  toast('Αποθηκεύτηκε.');
+  data[type]=data[type]||[];data[type].push(item);clearIds(p+'_title',p+'_text');save();sync(type,item);toast('Αποθηκεύτηκε.');setTimeout(()=>loadCloud(false),1500);
 }
 
 function hasConflict(item){
   const from=dateOnly(item.from),to=dateOnly(item.to)||from;
   if(isCheckStatus(item.status))return false;
   return (data.visits||[]).filter(isRealVisit).some(v=>{
-    if(v.id===item.id)return false;
+    if(visitKey(v)===visitKey(item))return false;
     if(isCheckStatus(v.status))return false;
     const vf=dateOnly(v.from),vt=dateOnly(v.to)||vf;
-    return vf && from<=vt && to>=vf;
+    return vf&&from<=vt&&to>=vf;
   });
 }
 
 function rowToItem(type,row){
   if(!row)return null;
   const title=row['Τίτλος']||row.title||row['Όνομα']||row['Όνομα / Υπηρεσία']||row['Ποιος θα πάει']||row['Προμήθεια']||row['Ανακοίνωση']||'';
-  if(type==='visits')return {id:row.id||makeStableId('visits',row),name:row['Ποιος θα πάει']||row['Όνομα']||row.name||'',from:dateOnly(row['Από']||row.from||''),to:dateOnly(row['Έως']||row.to||''),status:row['Κατάσταση']||row.status||'',notes:row['Παρατηρήσεις']||row['Σχόλιο']||row.notes||'',created:row['Ημερομηνία καταχώρησης']||row['Ημερομηνία']||row.created||row.Created||''};
-  return {id:row.id||makeStableId(type,row),title:title,text:row['Περιγραφή']||row['Πληροφορίες']||row['Μήνυμα']||row['Τηλέφωνο / σημείωση']||row['Τηλέφωνο']||row.text||'',created:row['Ημερομηνία καταχώρησης']||row['Ημερομηνία']||row.created||row.Created||''}
+  if(type==='visits'){
+    const item={id:String(row.id||'').trim(),name:row['Ποιος θα πάει']||row['Όνομα']||row.name||'',from:dateOnly(row['Από']||row.from||''),to:dateOnly(row['Έως']||row.to||''),status:row['Κατάσταση']||row.status||'',notes:row['Παρατηρήσεις']||row['Σχόλιο']||row.notes||'',created:row['Ημερομηνία καταχώρησης']||row['Ημερομηνία']||row.created||row.Created||''};
+    if(!item.id)item.id=visitKey(item);
+    return item;
+  }
+  const item={id:String(row.id||'').trim(),title:title,text:row['Περιγραφή']||row['Πληροφορίες']||row['Μήνυμα']||row['Τηλέφωνο / σημείωση']||row['Τηλέφωνο']||row.text||'',created:row['Ημερομηνία καταχώρησης']||row['Ημερομηνία']||row.created||row.Created||''};
+  if(!item.id)item.id=itemKey(type,item);
+  return item;
 }
-function makeStableId(type,row){return type+'_'+btoa(unescape(encodeURIComponent(JSON.stringify(row)))).replace(/[^a-zA-Z0-9]/g,'').slice(0,24)}
 
 function toSheetRow(type,item){
   if(type==='visits')return {id:item.id,'Όνομα':item.name,'Ποιος θα πάει':item.name,'Από':item.from,'Έως':item.to,'Κατάσταση':item.status,'Σχόλιο':item.notes,'Παρατηρήσεις':item.notes,'Ημερομηνία':item.created,'Ημερομηνία καταχώρησης':item.created};
@@ -78,22 +74,28 @@ async function loadCloud(showMsg=false){
   isSyncing=true;
   try{
     const results=await Promise.all(TYPES.map(readTable));
-    TYPES.forEach((t,i)=>{data[t]=mergeKeepPending(t,results[i]||[])});
+    TYPES.forEach((t,i)=>data[t]=mergeLocalWithCloud(t,results[i]||[]));
     save();
     if(showMsg)toast('Έγινε ανανέωση από το κοινό αρχείο.');
   }catch(e){console.warn(e);if(showMsg)toast('Δεν έγινε ανάγνωση από το κοινό αρχείο.')}
   finally{isSyncing=false}
 }
 
-function mergeKeepPending(type,cloudItems){
-  const local=(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x));
+function mergeLocalWithCloud(type,cloudItems){
   const cloud=cloudItems.filter(x=>type==='visits'?isRealVisit(x):isRealItem(x));
-  const keys=new Set(cloud.map(itemKey));
-  const pending=local.filter(x=>x._pending && !keys.has(itemKey(x)));
-  return dedupe([...cloud,...pending]);
+  const local=(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x));
+  const out=[];const seen=new Set();
+  [...cloud,...local.filter(x=>x._pending)].forEach(x=>{
+    const k=type==='visits'?visitKey(x):itemKey(type,x);
+    if(seen.has(k))return;
+    seen.add(k);x.id=x.id||k;out.push(x);
+  });
+  return out;
 }
-function dedupe(items){const seen=new Set(),out=[];items.forEach(x=>{const k=itemKey(x);if(seen.has(k))return;seen.add(k);out.push(x)});return out}
-function itemKey(x){return x.id||[x.name,x.title,x.from,x.to,x.text,x.created].join('|')}
+
+function visitKey(x){return ['visit',clean(x.name),dateOnly(x.from),dateOnly(x.to)||dateOnly(x.from),clean(x.created),clean(x.notes),clean(x.status)].join('|')}
+function itemKey(type,x){return [type,clean(x.title),clean(x.text),clean(x.created)].join('|')}
+function clean(x){return String(x||'').trim().toLowerCase()}
 
 async function sync(type,item){
   try{await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'add',table:type,row:toSheetRow(type,item)})});item._pending=false;save()}
@@ -103,32 +105,28 @@ async function sync(type,item){
 async function deleteItem(type,id){
   if(!confirm('Να διαγραφεί αυτή η καταχώρηση;'))return;
   const item=(data[type]||[]).find(x=>x.id===id);
-  data[type]=(data[type]||[]).filter(x=>x.id!==id);
-  save();
-  try{await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'delete',table:type,id:id,...(item||{})})});toast('Διαγράφηκε.')}
+  data[type]=(data[type]||[]).filter(x=>x.id!==id);save();
+  try{await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'delete',table:type,id:id,...(item||{})})});toast('Διαγράφηκε.');setTimeout(()=>loadCloud(false),1000)}
   catch(e){console.warn(e)}
 }
 
 function render(){renderLists();renderCalendar()}
 
 function itemHtml(x,type){
-  if(type==='visits')return `<div class="item"><b>${esc(x.name)}</b><div>${showDate(x.from)}${x.to?' έως '+showDate(x.to):''}</div><div class="meta">${esc(labelStatus(x.status))}${x.notes?' – '+esc(x.notes):''}</div><button class="deleteBtn" onclick="deleteItem('${type}','${x.id}')">Διαγραφή</button></div>`;
-  return `<div class="item"><b>${esc(x.title)}</b><div>${esc(x.text||'')}</div><div class="meta">${esc(showDate(x.created)||x.created||'')}</div><button class="deleteBtn" onclick="deleteItem('${type}','${x.id}')">Διαγραφή</button></div>`
+  if(type==='visits')return `<div class="item"><b>${esc(x.name)}</b><div>${showDate(x.from)}${x.to?' έως '+showDate(x.to):''}</div><div class="meta">${esc(labelStatus(x.status))}${x.notes?' – '+esc(x.notes):''}</div><button class="deleteBtn" onclick="deleteItem('${type}','${escAttr(x.id)}')">Διαγραφή</button></div>`;
+  return `<div class="item"><b>${esc(x.title)}</b><div>${esc(x.text||'')}</div><div class="meta">${esc(showDate(x.created)||x.created||'')}</div><button class="deleteBtn" onclick="deleteItem('${type}','${escAttr(x.id)}')">Διαγραφή</button></div>`
 }
 function renderLists(){
   TYPES.forEach(type=>{
     const ids={visits:['visitsList','visitList'],damages:['damagesList'],supplies:['suppliesList'],news:['newsList'],phones:['phonesList']}[type];
     ids.forEach(id=>{
       const el=document.getElementById(id);
-      if(el){
-        const items=(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x)).slice().reverse();
-        el.innerHTML=items.map(x=>itemHtml(x,type)).join('')||'<div class="small">Δεν υπάρχει ακόμη καταχώρηση.</div>';
-      }
+      if(el){const items=(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x)).slice().reverse();el.innerHTML=items.map(x=>itemHtml(x,type)).join('')||'<div class="small">Δεν υπάρχει ακόμη καταχώρηση.</div>'}
     })
   })
 }
 
-function isRealVisit(x){return Boolean(x&&x.name&&x.from)}
+function isRealVisit(x){return Boolean(x&&String(x.name||'').trim()&&dateOnly(x.from))}
 function isRealItem(x){return Boolean(x&&((x.title&&String(x.title).trim())||(x.text&&String(x.text).trim())))}
 
 function dateOnly(x){
@@ -158,7 +156,7 @@ function renderCalendar(){
     const date=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     let cls='',who='';
     (data.visits||[]).filter(isRealVisit).forEach(v=>{const from=dateOnly(v.from),to=dateOnly(v.to)||from;if(from&&from<=date&&to>=date){cls=isCheckStatus(v.status)?'green':'red';who=v.name||''}});
-    html+=`<div class="day ${cls}" title="${esc(who)}">${d}</div>`;
+    html+=`<div class="day ${cls}" title="${escAttr(who)}">${d}</div>`;
   }
   grid.innerHTML=html;
 }
@@ -177,5 +175,6 @@ function updateBadges(){
   })
 }
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function escAttr(s){return esc(s).replace(/`/g,'')}
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 home();loadCloud(false);setInterval(()=>loadCloud(false),SYNC_INTERVAL_MS);
