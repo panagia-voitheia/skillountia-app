@@ -130,7 +130,15 @@ async function deleteItem(type,id){
 function render(){renderLists();renderCalendar()}
 
 function itemHtml(x,type){
-  if(type==='visits')return `<div class="item"><b>${esc(x.name)}</b><div>${showDate(x.from)}${x.to?' έως '+showDate(x.to):''}</div><div class="meta">${esc(labelStatus(x.status))}${x.notes?' – '+esc(x.notes):''}</div><button class="deleteBtn" onclick="deleteItem('${type}','${escAttr(x.id)}')">Διαγραφή</button></div>`;
+  if(type==='visits'){
+  const dot=isCheckStatus(x.status)?'greenDot':'redDot';
+  return `<div class="item">
+    <b><span class="statusDot ${dot}"></span>${esc(x.name)}</b>
+    <div>${showDate(x.from)}${x.to?' έως '+showDate(x.to):''}</div>
+    <div class="meta">${esc(labelStatus(x.status))}${x.notes?' – '+esc(x.notes):''}</div>
+    <button class="deleteBtn" onclick="deleteItem('${type}','${escAttr(x.id)}')">Διαγραφή</button>
+  </div>`;
+}
   return `<div class="item"><b>${esc(x.title)}</b><div>${esc(x.text||'')}</div><div class="meta">${esc(showDate(x.created)||x.created||'')}</div><button class="deleteBtn" onclick="deleteItem('${type}','${escAttr(x.id)}')">Διαγραφή</button></div>`
 }
 function renderLists(){
