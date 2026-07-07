@@ -15,8 +15,22 @@
 </head>
 <body>
   <div id="app" class="app">
+
     <section id="home" class="home">
       <img src="welcome.png" class="welcome" alt="Σπίτι στη Σκιλλουντία">
+
+      <div id="homeSummary" class="homeSummary" aria-label="Σύνοψη εφαρμογής">
+        <div class="miniCard">
+          <div class="miniTitle">🏡 Επόμενη επίσκεψη</div>
+          <div id="nextVisitName" class="miniMain">Θα εμφανιστεί αυτόματα</div>
+          <div id="nextVisitDate" class="miniSub">από το ημερολόγιο</div>
+        </div>
+        <div class="miniCard">
+          <div class="miniTitle">📊 Κατάσταση σπιτιού</div>
+          <div id="homeStats" class="miniSub">Επισκέψεις • Βλάβες • Προμήθειες</div>
+        </div>
+      </div>
+
       <button class="homeTap tap-cal" onclick="go('calendar')" aria-label="Ημερολόγιο"></button>
       <button class="homeTap tap-visit" onclick="go('visit')" aria-label="Δηλώνω επίσκεψη"><span id="homeVisitBadge" class="badge">νέο</span></button>
       <button class="homeTap tap-damage" onclick="go('damage')" aria-label="Βλάβες"><span id="homeDamageBadge" class="badge">νέο</span></button>
@@ -27,37 +41,42 @@
 
     <section id="calendar" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><div class="monthHead"><button onclick="moveMonth(-1)">‹</button><h2 id="monthTitle"></h2><button onclick="moveMonth(1)">›</button></div><div class="grid" id="calendarGrid"></div><div class="legend">Κόκκινο: κατειλημμένο / διανυκτέρευση. Πράσινο: πέρασμα ή έλεγχος χωρίς διανυκτέρευση.</div></div>
-      <div class="card"><h2>Όλες οι δηλώσεις</h2><div id="visitList" class="list"></div></div>
+      <div class="card">
+        <h1>📅 Ημερολόγιο</h1>
+        <div class="monthHead"><button onclick="moveMonth(-1)">‹</button><h2 id="monthTitle"></h2><button onclick="moveMonth(1)">›</button></div>
+        <div class="grid" id="calendarGrid"></div>
+        <div class="legend">Κόκκινο: κατειλημμένο / διανυκτέρευση. Πράσινο: πέρασμα ή έλεγχος χωρίς διανυκτέρευση.</div>
+      </div>
+      <div class="card"><h2>🏡 Όλες οι δηλώσεις</h2><div id="visitList" class="list"></div></div>
     </section>
 
     <section id="visit" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><h1>Δηλώνω επίσκεψη</h1><div class="label">Ποιος θα πάει;</div><input id="v_name"><div class="label">Από</div><input id="v_from" type="date"><div class="label">Έως</div><input id="v_to" type="date"><div class="label">Κατάσταση</div><select id="v_status"><option value="busy">Κατειλημμένο / θα μείνω εγώ</option><option value="check">Πέρασμα / έλεγχος χωρίς διανυκτέρευση</option></select><div class="label">Παρατηρήσεις</div><textarea id="v_notes"></textarea><button class="primary" onclick="addVisit()">Αποθήκευση επίσκεψης</button></div>
+      <div class="card"><h1>🏡 Δηλώνω επίσκεψη</h1><div class="label">Ποιος θα πάει;</div><input id="v_name"><div class="label">Από</div><input id="v_from" type="date"><div class="label">Έως</div><input id="v_to" type="date"><div class="label">Κατάσταση</div><select id="v_status"><option value="busy">Κατειλημμένο / θα μείνω εγώ</option><option value="check">Πέρασμα / έλεγχος χωρίς διανυκτέρευση</option></select><div class="label">Παρατηρήσεις</div><textarea id="v_notes"></textarea><button class="primary" onclick="addVisit()">Αποθήκευση επίσκεψης</button></div>
       <div class="card"><h2>Καταχωρήσεις</h2><div id="visitsList" class="list"></div></div>
     </section>
 
     <section id="damage" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><h1>Βλάβες – Εργασίες</h1><div class="label">Τίτλος</div><input id="d_title"><div class="label">Περιγραφή</div><textarea id="d_text"></textarea><button class="primary" onclick="addItem('damages')">Προσθήκη</button></div>
+      <div class="card"><h1>🔧 Βλάβες – Εργασίες</h1><div class="label">Τίτλος</div><input id="d_title"><div class="label">Περιγραφή</div><textarea id="d_text"></textarea><button class="primary" onclick="addItem('damages')">Προσθήκη</button></div>
       <div class="card"><h2>Καταχωρήσεις</h2><div id="damagesList" class="list"></div></div>
     </section>
 
     <section id="supplies" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><h1>Τρόφιμα – Προμήθειες</h1><div class="label">Τίτλος</div><input id="s_title"><div class="label">Πληροφορίες</div><textarea id="s_text"></textarea><button class="primary" onclick="addItem('supplies')">Προσθήκη</button></div>
+      <div class="card"><h1>🛒 Τρόφιμα – Προμήθειες</h1><div class="label">Τίτλος</div><input id="s_title"><div class="label">Πληροφορίες</div><textarea id="s_text"></textarea><button class="primary" onclick="addItem('supplies')">Προσθήκη</button></div>
       <div class="card"><h2>Καταχωρήσεις</h2><div id="suppliesList" class="list"></div></div>
     </section>
 
     <section id="news" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><h1>Ανακοινώσεις</h1><div class="label">Τίτλος</div><input id="n_title"><div class="label">Μήνυμα</div><textarea id="n_text"></textarea><button class="primary" onclick="addItem('news')">Προσθήκη ανακοίνωσης</button></div>
+      <div class="card"><h1>📣 Ανακοινώσεις</h1><div class="label">Τίτλος</div><input id="n_title"><div class="label">Μήνυμα</div><textarea id="n_text"></textarea><button class="primary" onclick="addItem('news')">Προσθήκη ανακοίνωσης</button></div>
       <div class="card"><h2>Καταχωρήσεις</h2><div id="newsList" class="list"></div></div>
     </section>
 
     <section id="phones" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><h1>Χρήσιμα τηλέφωνα</h1><div class="label">Όνομα / Υπηρεσία</div><input id="p_title"><div class="label">Τηλέφωνο / σημείωση</div><textarea id="p_text"></textarea><button class="primary" onclick="addItem('phones')">Προσθήκη</button></div>
+      <div class="card"><h1>☎️ Χρήσιμα τηλέφωνα</h1><div class="label">Όνομα / Υπηρεσία</div><input id="p_title"><div class="label">Τηλέφωνο / σημείωση</div><textarea id="p_text"></textarea><button class="primary" onclick="addItem('phones')">Προσθήκη</button></div>
       <div class="card"><h2>Καταχωρήσεις</h2><div id="phonesList" class="list"></div></div>
     </section>
 
