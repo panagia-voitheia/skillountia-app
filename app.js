@@ -7,40 +7,56 @@ function loadLocal(){try{return JSON.parse(localStorage.getItem('skillountiaData
 function save(){localStorage.setItem('skillountiaData',JSON.stringify(data));render();updateBadges()}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function todayText(){return new Date().toLocaleString('el-GR')}
-function toast(msg){const t=document.getElementById('toast');if(!t){alert(msg);return}t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000)}
+function toast(msg){const t=document.getElementById('toast');if(!t){alert(msg);return}t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3600)}
 function val(id){return (document.getElementById(id)?.value||'').trim()}
 function clearIds(...ids){ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})}
 
 function home(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('home').style.display='block';document.getElementById('nav').style.display='none';render();updateBadges()}
 function go(id){document.getElementById('home').style.display='none';document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');document.getElementById('nav').style.display='grid';markSeen(id);render()}
-function markSeen(id){const key={visit:'visits',damage:'damages',supplies:'supplies',news:'news'}[id];if(key){localStorage.setItem('seen_'+key,String(Date.now()));updateBadges()}}
+function markSeen(id){const key={visit:'visits',damage:'damages',supplies:'supplies',news:'news'}[id];if(key){localStorage.setItem('seen_'+key,String(latestTimeForType(key)));updateBadges()}}
 
 async function addVisit(){
   await loadCloud(false);
   const item={id:uid(),name:val('v_name'),from:dateOnly(val('v_from')),to:dateOnly(val('v_to')),status:val('v_status'),notes:val('v_notes'),created:todayText(),_pending:true};
   if(!item.name||!item.from){toast('Συμπληρώστε όνομα και ημερομηνία.');return}
   if(!item.to)item.to=item.from;
-  if(hasConflict(item)){toast('Οι ημερομηνίες είναι ήδη δεσμευμένες.');return}
-  data.visits=data.visits||[];data.visits.push(item);clearIds('v_name','v_notes');save();
-  await sync('visits',item);toast('Αποθηκεύτηκε επίσκεψη.');setTimeout(()=>loadCloud(false),1500);
+  const conflict=findConflict(item);
+  if(conflict){
+    toast(`Οι ημερομηνίες είναι ήδη δεσμευμένες${conflict.name?' από '+conflict.name:''}.`);
+    return;
+  }
+  data.visits=data.visits||[];
+  data.visits.push(item);
+  clearIds('v_name','v_notes');
+  save();
+  await sync('visits',item);
+  toast('Αποθηκεύτηκε επίσκεψη.');
+  setTimeout(()=>loadCloud(false),1500);
 }
 
 function addItem(type){
   const p={damages:'d',supplies:'s',news:'n',phones:'p'}[type];
   const item={id:uid(),title:val(p+'_title'),text:val(p+'_text'),created:todayText(),_pending:true};
   if(!item.title){toast('Συμπληρώστε τίτλο.');return}
-  data[type]=data[type]||[];data[type].push(item);clearIds(p+'_title',p+'_text');save();sync(type,item);toast('Αποθηκεύτηκε.');setTimeout(()=>loadCloud(false),1500);
+  data[type]=data[type]||[];
+  data[type].push(item);
+  clearIds(p+'_title',p+'_text');
+  save();
+  sync(type,item);
+  toast('Αποθηκεύτηκε.');
+  setTimeout(()=>loadCloud(false),1500);
 }
 
-function hasConflict(item){
+function hasConflict(item){return Boolean(findConflict(item))}
+function findConflict(item){
   const from=dateOnly(item.from),to=dateOnly(item.to)||from;
-  if(isCheckStatus(item.status))return false;
-  return (data.visits||[]).filter(isRealVisit).some(v=>{
+  if(isCheckStatus(item.status))return null;
+  return (data.visits||[]).filter(isRealVisit).find(v=>{
     if(visitKey(v)===visitKey(item))return false;
     if(isCheckStatus(v.status))return false;
     const vf=dateOnly(v.from),vt=dateOnly(v.to)||vf;
     return vf&&from<=vt&&to>=vf;
-  });
+  })||null;
 }
 
 function rowToItem(type,row){
@@ -105,7 +121,8 @@ async function sync(type,item){
 async function deleteItem(type,id){
   if(!confirm('Να διαγραφεί αυτή η καταχώρηση;'))return;
   const item=(data[type]||[]).find(x=>x.id===id);
-  data[type]=(data[type]||[]).filter(x=>x.id!==id);save();
+  data[type]=(data[type]||[]).filter(x=>x.id!==id);
+  save();
   try{await fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'delete',table:type,id:id,...(item||{})})});toast('Διαγράφηκε.');setTimeout(()=>loadCloud(false),1000)}
   catch(e){console.warn(e)}
 }
@@ -121,7 +138,10 @@ function renderLists(){
     const ids={visits:['visitsList','visitList'],damages:['damagesList'],supplies:['suppliesList'],news:['newsList'],phones:['phonesList']}[type];
     ids.forEach(id=>{
       const el=document.getElementById(id);
-      if(el){const items=(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x)).slice().reverse();el.innerHTML=items.map(x=>itemHtml(x,type)).join('')||'<div class="small">Δεν υπάρχει ακόμη καταχώρηση.</div>'}
+      if(el){
+        const items=(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x)).slice().sort((a,b)=>sortTime(b,type)-sortTime(a,type));
+        el.innerHTML=items.map(x=>itemHtml(x,type)).join('')||'<div class="small">Δεν υπάρχει ακόμη καταχώρηση.</div>';
+      }
     })
   })
 }
@@ -140,6 +160,7 @@ function dateOnly(x){
   return '';
 }
 function showDate(x){const d=dateOnly(x);if(!d)return '';const p=d.split('-');return `${p[2]}/${p[1]}/${p[0]}`}
+function sortTime(x,type){const d=dateOnly(type==='visits'?(x.from||x.created):x.created);return d?Date.parse(d):0}
 function isCheckStatus(status){const s=String(status||'').toLowerCase();return s==='check'||s.includes('πέρασμα')||s.includes('έλεγχος')}
 function labelStatus(status){return isCheckStatus(status)?'Πέρασμα / έλεγχος χωρίς διανυκτέρευση':'Κατειλημμένο / διανυκτέρευση'}
 
@@ -162,10 +183,13 @@ function renderCalendar(){
 }
 function moveMonth(n){currentMonth=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+n,1);renderCalendar()}
 
+function latestTimeForType(type){
+  return Math.max(0,...(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x)).map(x=>Date.parse(dateOnly(x.created||x.from||''))||0));
+}
 function updateBadges(){
   const map={visits:['navVisit','homeVisitBadge'],damages:['navDamage','homeDamageBadge'],supplies:['navSupplies','homeSuppliesBadge'],news:['navNews','homeNewsBadge']};
   Object.keys(map).forEach(type=>{
-    const latest=Math.max(0,...(data[type]||[]).filter(x=>type==='visits'?isRealVisit(x):isRealItem(x)).map(x=>Date.parse(dateOnly(x.created||x.from||''))||0));
+    const latest=latestTimeForType(type);
     const seen=Number(localStorage.getItem('seen_'+type)||0);
     const has=latest>seen&&latest>0;
     const nav=document.getElementById(map[type][0]);
