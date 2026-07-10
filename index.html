@@ -39,7 +39,12 @@
 
     <section id="calendar" class="screen">
       <div class="topbar"><button class="back" onclick="home()">← Αρχική</button><button class="gear" onclick="loadCloud(true)">🔄</button></div>
-      <div class="card"><div class="monthHead"><button onclick="moveMonth(-1)">‹</button><h2 id="monthTitle"></h2><button onclick="moveMonth(1)">›</button></div><div class="grid" id="calendarGrid"></div><div class="legend">Κόκκινο: κατειλημμένο / διανυκτέρευση. Πράσινο: πέρασμα ή έλεγχος χωρίς διανυκτέρευση.</div></div>
+      <div class="card"><div class="monthHead"><button onclick="moveMonth(-1)">‹</button><h2 id="monthTitle"></h2><button onclick="moveMonth(1)">›</button></div><div class="grid" id="calendarGrid"></div><div class="legend">
+  <span class="redText">Κόκκινο:</span>
+  <strong>κατειλημμένο / διανυκτέρευση.</strong>
+  <span class="greenText">Πράσινο:</span>
+  <strong>πέρασμα ή έλεγχος χωρίς διανυκτέρευση.</strong>
+</div>
       <div class="card"><h2>Όλες οι δηλώσεις</h2><div id="visitList" class="list"></div></div>
     </section>
 
