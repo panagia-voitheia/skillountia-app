@@ -12,6 +12,18 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "b41dc6f2-b844-4433-9e80-b87985faf520",
+        serviceWorkerPath: "sw.js",
+        serviceWorkerParam: { scope: "/" },
+        allowLocalhostAsSecureOrigin: false
+      });
+    });
+  </script>
 </head>
 <body>
   <div id="app" class="app">
