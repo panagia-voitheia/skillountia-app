@@ -55,3 +55,7 @@ textarea{min-height:90px}
 }
 .redDot{background:#b34434}
 .greenDot{background:#5d8b57}
+
+.statusRed{color:#b34434;font-weight:900}
+.statusGreen{color:#2f8a3d;font-weight:900}
+.meta strong{font-weight:900;color:#222}

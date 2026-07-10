@@ -135,7 +135,7 @@ function itemHtml(x,type){
   return `<div class="item">
     <b><span class="statusDot ${dot}"></span>${esc(x.name)}</b>
     <div>${showDate(x.from)}${x.to?' έως '+showDate(x.to):''}</div>
-    <div class="meta">${esc(labelStatus(x.status))}${x.notes?' – '+esc(x.notes):''}</div>
+    <div class="meta"><span class="${isCheckStatus(x.status)?'statusGreen':'statusRed'}">${esc(labelStatus(x.status).split(" / ")[0])}</span> <strong>${esc(labelStatus(x.status).split(" / ").slice(1).join(" / "))}</strong>${x.notes?' – <strong>'+esc(x.notes)+'</strong>':''}</div>
     <button class="deleteBtn" onclick="deleteItem('${type}','${escAttr(x.id)}')">Διαγραφή</button>
   </div>`;
 }
